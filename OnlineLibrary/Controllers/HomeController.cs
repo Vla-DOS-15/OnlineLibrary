@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OnlineLibrary.Models;
 using System;
@@ -7,6 +8,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Net.Sockets;
+using System.Net;
+using System.Text;
 
 namespace OnlineLibrary.Controllers
 {
@@ -15,61 +19,42 @@ namespace OnlineLibrary.Controllers
         private readonly ILogger<HomeController> _logger;
 
         LibraryContext dbContext;
-        //private IAllBooks allBooks;
 
         public HomeController(LibraryContext dbContext)
         {
             this.dbContext = dbContext;
         }
-        //public HomeController(ILogger<HomeController> logger)
-        //{
-        //    _logger = logger;
-        //}
-        public void Add()
+
+        public ActionResult Index(string Name)
         {
-            using (dbContext = new LibraryContext())
+            IEnumerable<Book> books = dbContext.Books.Include(x=>x.Category);
+
+            if (string.IsNullOrEmpty(Name))
             {
-                Book book = new Book
-                {
-                    Name = "qwe",
-                    Author = "12",
-                    YearCreated = 2000,
-                    Path = "Sample.txt"
-
-                };
-                dbContext.Books.Add(book);
-                dbContext.SaveChanges();
-            }
-
-        }
-        // GET: Home
-        public ActionResult Index()
-        {
-
-                //Book book = new Book
-                //{
-                //    Name = "qwe",
-                //    Author = "12",
-                //    YearCreated = 2000,
-                //    Path = "Sample.txt"
-
-                //};
-                //dbContext.Books.Add(book);
-                //dbContext.SaveChanges();
-            IEnumerable<Book> books = dbContext.Books;
-
-            //if (string.IsNullOrEmpty(Name))
-            //{
                 ViewBag.Books = books;
-            //}
-            //else
-            //{
-                //ViewBag.Books = books.Where(s => s.Name.Contains(Name) || s.Author.Contains(Name));
-            //}
+            }
+            else
+            {
+                ViewBag.Books = books.Where(s => s.Name.Contains(Name) || s.Author.Contains(Name) || s.Category.CategoryName.Contains(Name));
+            }
             return View();
-            // string[] texts = System.IO.File.ReadAllLines(@"AppData/Sample.txt");
-            // ViewBag.Data = texts;
-            // return View();
+        }
+        [HttpGet]
+        public ActionResult BookInfo(int? id)
+        {
+            if (id == null)
+                return RedirectToAction("/Home/Index");
+            ViewBag.BookId = id;
+            IEnumerable<Book> books = dbContext.Books.Include(x=>x.Category).Where(x => x.IdBook == id);
+            ViewBag.Books = books;
+            var path = "";
+            foreach (Book book in books)
+                path = book.Path;
+            Console.WriteLine(path);    
+            string[] texts = System.IO.File.ReadAllLines($"AppData/{path}.txt");
+            ViewBag.Data = texts;
+            
+            return View();
         }
 
         public IActionResult Privacy()
@@ -82,5 +67,9 @@ namespace OnlineLibrary.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
+
+ 
     }
+    
+
 }
